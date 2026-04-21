@@ -1,7 +1,26 @@
+"use client";
+
 import { useState } from "react";
 import type { ToolDefinition } from "@/types";
 
+function formatToolsText(tools: ToolDefinition[]): string {
+  return tools
+    .map((tool) => {
+      const parts: string[] = [`## ${tool.name}`];
+      if (tool.description) {
+        parts.push(tool.description);
+      }
+      if (tool.parameters) {
+        parts.push("```json\n" + JSON.stringify(tool.parameters, null, 2) + "\n```");
+      }
+      return parts.join("\n\n");
+    })
+    .join("\n\n---\n\n");
+}
+
 export function ToolList({ tools }: { tools: ToolDefinition[] }) {
+  const [copied, setCopied] = useState(false);
+
   if (tools.length === 0) {
     return (
       <div className="text-center py-12 text-secondary">
@@ -10,8 +29,22 @@ export function ToolList({ tools }: { tools: ToolDefinition[] }) {
     );
   }
 
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(formatToolsText(tools));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="space-y-3">
+      <div className="flex justify-end">
+        <button
+          onClick={handleCopy}
+          className="text-xs text-secondary hover:text-secondary-bright px-2.5 py-1.5 rounded-md border border-surface-raised hover:bg-surface-raised transition-colors"
+        >
+          {copied ? "Copied" : "Copy All"}
+        </button>
+      </div>
       {tools.map((tool) => (
         <ToolCard key={tool.id} tool={tool} />
       ))}
