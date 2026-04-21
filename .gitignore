@@ -12,3 +12,5 @@ wheels/
 openspec/
 .DS_Store
 */.env
+.claude/
+**/*.db
