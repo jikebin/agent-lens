@@ -11,3 +11,4 @@ wheels/
 .codex
 openspec/
 .DS_Store
+*/.env
