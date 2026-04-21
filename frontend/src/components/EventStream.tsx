@@ -23,7 +23,7 @@ export function EventStream({ requestRowId }: { requestRowId: number }) {
 
   if (loading && events.length === 0) {
     return (
-      <div className="text-center py-12 text-[#64748b]">
+      <div className="text-center py-12 text-secondary">
         Loading events...
       </div>
     );
@@ -31,7 +31,7 @@ export function EventStream({ requestRowId }: { requestRowId: number }) {
 
   if (!loading && total === 0) {
     return (
-      <div className="text-center py-12 text-[#64748b]">
+      <div className="text-center py-12 text-secondary">
         No stream events recorded for this request.
       </div>
     );
@@ -39,7 +39,7 @@ export function EventStream({ requestRowId }: { requestRowId: number }) {
 
   return (
     <div className="space-y-1">
-      <div className="text-xs text-[#64748b] mb-3">
+      <div className="text-xs text-secondary mb-3">
         Total events: {total}
       </div>
       {events.map((event) => (
@@ -50,17 +50,17 @@ export function EventStream({ requestRowId }: { requestRowId: number }) {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="text-xs px-3 py-1.5 rounded-md border border-[#1e1e2e] text-[#94a3b8] hover:bg-[#1e1e2e] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="text-xs px-3 py-1.5 rounded-md border border-surface-raised text-secondary-bright hover:bg-surface-raised disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             Previous
           </button>
-          <span className="text-xs text-[#64748b]">
+          <span className="text-xs text-secondary">
             Page {page} of {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="text-xs px-3 py-1.5 rounded-md border border-[#1e1e2e] text-[#94a3b8] hover:bg-[#1e1e2e] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="text-xs px-3 py-1.5 rounded-md border border-surface-raised text-secondary-bright hover:bg-surface-raised disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             Next
           </button>
@@ -91,26 +91,26 @@ function EventRow({ event }: { event: StreamEvent }) {
 
   return (
     <div
-      className="rounded-lg border border-[#1e1e2e] bg-[#12121a]/50 p-2 cursor-pointer hover:bg-[#12121a] transition-colors"
+      className="rounded-lg border border-surface-raised bg-surface/50 p-2 cursor-pointer hover:bg-surface transition-colors"
       onClick={() => setExpanded(!expanded)}
     >
       <div className="flex items-center gap-2">
-        <span className="text-xs text-[#475569] w-8">#{event.sequence}</span>
+        <span className="text-xs text-muted w-8">#{event.sequence}</span>
         <span
           className={`text-xs font-medium px-2 py-0.5 rounded ${
-            typeColors[event.event_type] || "bg-[#1e1e2e] text-[#64748b]"
+            typeColors[event.event_type] || "bg-surface-raised text-secondary"
           }`}
         >
           {event.event_type}
         </span>
         {!expanded && eventData && (
-          <span className="text-xs text-[#475569] truncate flex-1">
+          <span className="text-xs text-muted truncate flex-1">
             {JSON.stringify(eventData).slice(0, 100)}
           </span>
         )}
       </div>
       {expanded && eventData && (
-        <pre className="mt-2 text-xs text-[#cbd5e1] bg-[#0a0a0f] p-2 rounded-lg overflow-x-auto">
+        <pre className="mt-2 text-xs text-content bg-canvas p-2 rounded-lg overflow-x-auto">
           {JSON.stringify(eventData, null, 2)}
         </pre>
       )}

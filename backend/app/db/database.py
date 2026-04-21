@@ -24,6 +24,12 @@ CREATE TABLE IF NOT EXISTS requests (
     request_id TEXT NOT NULL UNIQUE,
     api_format TEXT NOT NULL,
     is_stream INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'success',
+    error_type TEXT,
+    error_message TEXT,
+    prompt_tokens INTEGER NOT NULL DEFAULT 0,
+    completion_tokens INTEGER NOT NULL DEFAULT 0,
+    total_tokens INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

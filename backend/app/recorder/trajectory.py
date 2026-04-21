@@ -126,3 +126,23 @@ async def record_stream_events_batch(
             for event_type, data, seq in events
         ],
     )
+
+
+async def update_request_status(
+    db, request_row_id: int, status: str,
+    error_type: str | None = None, error_message: str | None = None,
+) -> None:
+    await db.execute(
+        "UPDATE requests SET status=?, error_type=?, error_message=? WHERE id=?",
+        (status, error_type, error_message, request_row_id),
+    )
+
+
+async def update_request_usage(
+    db, request_row_id: int, prompt_tokens: int, completion_tokens: int,
+) -> None:
+    total = prompt_tokens + completion_tokens
+    await db.execute(
+        "UPDATE requests SET prompt_tokens=?, completion_tokens=?, total_tokens=? WHERE id=?",
+        (prompt_tokens, completion_tokens, total, request_row_id),
+    )

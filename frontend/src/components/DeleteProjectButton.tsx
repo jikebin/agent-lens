@@ -45,7 +45,7 @@ export function DeleteProjectButton({ projectId }: { projectId: number }) {
         </button>
         <button
           onClick={() => setState("idle")}
-          className="text-xs text-[#64748b] hover:text-[#94a3b8] px-3 py-1.5 rounded-md transition-colors"
+          className="text-xs text-secondary hover:text-secondary-bright px-3 py-1.5 rounded-md transition-colors"
         >
           Cancel
         </button>
@@ -55,6 +55,6 @@ export function DeleteProjectButton({ projectId }: { projectId: number }) {
   }
 
   return (
-    <span className="text-xs text-[#64748b]">Deleting...</span>
+    <span className="text-xs text-secondary">Deleting...</span>
   );
 }

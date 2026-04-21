@@ -12,17 +12,28 @@ router = APIRouter(prefix="/api")
 
 
 @router.get("/projects")
-async def list_projects():
+async def list_projects(search: str | None = Query(None)):
     db = await get_db()
+
+    params = []
+    where_clause = ""
+    if search:
+        where_clause = "WHERE (p.model LIKE ? OR p.api_key_prefix LIKE ? OR COALESCE(p.name,'') LIKE ?)"
+        params = [f"%{search}%", f"%{search}%", f"%{search}%"]
+
     cursor = await db.execute(
-        """
+        f"""
         SELECT p.id, p.api_key_hash, p.api_key_prefix, p.model, p.name, p.created_at,
-               COUNT(r.id) as request_count
+               COUNT(r.id) as request_count,
+               COALESCE(SUM(r.total_tokens), 0) as total_tokens,
+               SUM(CASE WHEN r.status='error' THEN 1 ELSE 0 END) as error_count
         FROM projects p
         LEFT JOIN requests r ON r.project_id = p.id
+        {where_clause}
         GROUP BY p.id
         ORDER BY p.created_at DESC
-        """
+        """,
+        params,
     )
     rows = await cursor.fetchall()
     return [dict(row) for row in rows]
@@ -51,16 +62,38 @@ async def delete_project(project_id: int):
 
 
 @router.get("/projects/{project_id}/requests")
-async def list_project_requests(project_id: int):
+async def list_project_requests(
+    project_id: int,
+    status: str | None = Query(None, pattern="^(success|error)$"),
+    api_format: str | None = Query(None, pattern="^(openai|anthropic)$"),
+    search: str | None = Query(None),
+):
     db = await get_db()
+
+    conditions = ["project_id = ?"]
+    params: list = [project_id]
+
+    if status:
+        conditions.append("status = ?")
+        params.append(status)
+    if api_format:
+        conditions.append("api_format = ?")
+        params.append(api_format)
+    if search:
+        conditions.append("request_id LIKE ?")
+        params.append(f"%{search}%")
+
+    where = " AND ".join(conditions)
+
     cursor = await db.execute(
-        """
-        SELECT id, request_id, api_format, is_stream, created_at
+        f"""
+        SELECT id, request_id, api_format, is_stream, created_at,
+               status, error_type, error_message, prompt_tokens, completion_tokens, total_tokens
         FROM requests
-        WHERE project_id = ?
+        WHERE {where}
         ORDER BY created_at DESC
         """,
-        (project_id,),
+        params,
     )
     rows = await cursor.fetchall()
     return [dict(row) for row in rows]
@@ -72,6 +105,8 @@ async def get_request_detail(request_row_id: int):
     cursor = await db.execute(
         """
         SELECT r.id, r.request_id, r.api_format, r.is_stream, r.created_at,
+               r.status, r.error_type, r.error_message,
+               r.prompt_tokens, r.completion_tokens, r.total_tokens,
                p.id as project_id, p.api_key_prefix, p.model
         FROM requests r
         JOIN projects p ON p.id = r.project_id
@@ -176,6 +211,58 @@ async def get_request_system_prompt(request_row_id: int):
     )
     rows = await cursor.fetchall()
     return [dict(row) for row in rows]
+
+
+@router.get("/projects/{project_id}/stats")
+async def get_project_stats(project_id: int):
+    db = await get_db()
+
+    cursor = await db.execute(
+        """
+        SELECT COUNT(*) as total_requests,
+               SUM(CASE WHEN status='error' THEN 1 ELSE 0 END) as error_count,
+               SUM(CASE WHEN status='success' THEN 1 ELSE 0 END) as success_count,
+               COALESCE(SUM(prompt_tokens), 0) as total_prompt_tokens,
+               COALESCE(SUM(completion_tokens), 0) as total_completion_tokens,
+               COALESCE(SUM(total_tokens), 0) as total_tokens
+        FROM requests
+        WHERE project_id = ?
+        """,
+        (project_id,),
+    )
+    row = await cursor.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    stats = dict(row)
+    total = stats["total_requests"] or 0
+    error_count = stats["error_count"] or 0
+    success_count = stats["success_count"] or 0
+    total_tokens = stats["total_tokens"] or 0
+
+    stats["error_rate"] = round(error_count / total, 4) if total > 0 else 0
+    stats["avg_tokens_per_request"] = round(total_tokens / total) if total > 0 else 0
+    stats["avg_tokens_success"] = round(total_tokens / success_count) if success_count > 0 else 0
+
+    # Daily token trend for last 30 days
+    cursor = await db.execute(
+        """
+        SELECT DATE(created_at) as date,
+               SUM(prompt_tokens) as prompt_tokens,
+               SUM(completion_tokens) as completion_tokens,
+               SUM(total_tokens) as total_tokens,
+               COUNT(*) as request_count
+        FROM requests
+        WHERE project_id = ? AND created_at >= DATE('now', '-30 days')
+        GROUP BY DATE(created_at)
+        ORDER BY date
+        """,
+        (project_id,),
+    )
+    daily_rows = await cursor.fetchall()
+    stats["daily_token_trend"] = [dict(r) for r in daily_rows]
+
+    return stats
 
 
 @router.get("/requests/{request_row_id}/events-stream")

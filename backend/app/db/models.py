@@ -21,6 +21,12 @@ class Request:
     request_id: str = ""
     api_format: str = ""  # "openai" or "anthropic"
     is_stream: bool = False
+    status: str = "success"
+    error_type: str | None = None
+    error_message: str | None = None
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
     created_at: str = ""
 
 

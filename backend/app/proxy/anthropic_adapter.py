@@ -16,6 +16,8 @@ from app.recorder.trajectory import (
     record_system_prompt,
     record_tool_definition,
     request_transaction,
+    update_request_status,
+    update_request_usage,
 )
 
 router = APIRouter(prefix="/anthropic")
@@ -251,6 +253,9 @@ async def anthropic_messages(request: Request):
         try:
             result = await forward_non_stream("/chat/completions", openai_body)
         except UpstreamError as e:
+            async with request_transaction() as db:
+                await update_request_status(db, request_row_id, "error", "upstream_error",
+                    f"HTTP {e.status_code}: {json.dumps(e.to_json())[:500]}")
             error_resp = {
                 "type": "error",
                 "error": {
@@ -287,6 +292,9 @@ async def anthropic_messages(request: Request):
                         tool_call_id=block["id"],
                         sequence=1,
                     )
+            usage = result.get("usage", {})
+            await update_request_usage(db, request_row_id,
+                usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0))
 
         return JSONResponse(content=anthropic_resp)
 
@@ -392,9 +400,11 @@ async def _stream_anthropic(request_row_id: int, openai_body: dict, model: str):
             "error": {"type": "api_error", "message": f"Upstream error: {e.status_code}"},
         }
         yield f"event: error\ndata: {json.dumps(error_event)}\n\n"
-        if buffered_events:
-            async with request_transaction() as db:
+        async with request_transaction() as db:
+            if buffered_events:
                 await record_stream_events_batch(db, request_row_id, buffered_events)
+            await update_request_status(db, request_row_id, "error", "upstream_error",
+                f"HTTP {e.status_code}: {json.dumps(e.to_json())[:500]}")
         return
     except Exception:
         error_event = {
@@ -402,9 +412,11 @@ async def _stream_anthropic(request_row_id: int, openai_body: dict, model: str):
             "error": {"type": "stream_error", "message": "Stream interrupted"},
         }
         yield f"event: error\ndata: {json.dumps(error_event)}\n\n"
-        if buffered_events:
-            async with request_transaction() as db:
+        async with request_transaction() as db:
+            if buffered_events:
                 await record_stream_events_batch(db, request_row_id, buffered_events)
+            await update_request_status(db, request_row_id, "error", "stream_error",
+                "Stream interrupted")
         return
 
     text_block_stop = {"type": "content_block_stop", "index": 0}
@@ -420,12 +432,14 @@ async def _stream_anthropic(request_row_id: int, openai_body: dict, model: str):
 
     stop_reason = "tool_use" if tool_calls_map else "end_turn"
 
+    prompt_tokens = 0
     output_tokens = 0
     for ev_type, ev_data, _ in reversed(buffered_events):
         if ev_type == "openai_chunk_raw" and isinstance(ev_data, dict):
             usage = ev_data.get("usage")
             if usage and usage.get("completion_tokens"):
                 output_tokens = usage["completion_tokens"]
+                prompt_tokens = usage.get("prompt_tokens", 0)
                 break
 
     message_delta = {
@@ -466,3 +480,4 @@ async def _stream_anthropic(request_row_id: int, openai_body: dict, model: str):
                 tool_call_id=tc["id"],
                 sequence=idx + 1,
             )
+        await update_request_usage(db, request_row_id, prompt_tokens, output_tokens)

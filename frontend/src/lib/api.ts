@@ -7,6 +7,7 @@ import type {
   StreamEvent,
   SystemPrompt,
   PaginatedEventsResponse,
+  ProjectStats,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
@@ -63,13 +64,22 @@ function parseEvents(raw: Record<string, unknown>[]): StreamEvent[] {
 }
 
 export const api = {
-  listProjects: () => fetchJSON<Project[]>("/api/projects"),
+  listProjects: (search?: string) => {
+    const params = search ? `?search=${encodeURIComponent(search)}` : "";
+    return fetchJSON<Project[]>(`/api/projects${params}`);
+  },
 
   deleteProject: (projectId: number) =>
     fetchJSON<{ deleted: boolean }>(`/api/projects/${projectId}`, { method: "DELETE" }),
 
-  listProjectRequests: (projectId: number) =>
-    fetchJSON<RequestInfo[]>(`/api/projects/${projectId}/requests`),
+  listProjectRequests: (projectId: number, filters?: { status?: string; api_format?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.api_format) params.set("api_format", filters.api_format);
+    if (filters?.search) params.set("search", filters.search);
+    const qs = params.toString();
+    return fetchJSON<RequestInfo[]>(`/api/projects/${projectId}/requests${qs ? `?${qs}` : ""}`);
+  },
 
   getRequestDetail: (requestRowId: number) =>
     fetchJSON<RequestDetail>(`/api/requests/${requestRowId}`),
@@ -97,4 +107,7 @@ export const api = {
 
   getRequestSystemPrompt: (requestRowId: number) =>
     fetchJSON<SystemPrompt[]>(`/api/requests/${requestRowId}/system-prompt`),
+
+  getProjectStats: (projectId: number) =>
+    fetchJSON<ProjectStats>(`/api/projects/${projectId}/stats`),
 };

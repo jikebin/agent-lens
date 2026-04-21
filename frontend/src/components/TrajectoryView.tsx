@@ -33,7 +33,7 @@ export function TrajectoryView({
 
   return (
     <div>
-      <div className="flex border-b border-[#1e1e2e] mb-6">
+      <div className="flex border-b border-surface-raised mb-6">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -41,11 +41,11 @@ export function TrajectoryView({
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab.key
                 ? "border-indigo-500 text-indigo-400"
-                : "border-transparent text-[#64748b] hover:text-[#94a3b8]"
+                : "border-transparent text-secondary hover:text-secondary-bright"
             }`}
           >
             {tab.label}
-            <span className="ml-1.5 text-xs bg-[#1e1e2e] px-1.5 py-0.5 rounded-full">
+            <span className="ml-1.5 text-xs bg-surface-raised px-1.5 py-0.5 rounded-full">
               {tab.count}
             </span>
           </button>

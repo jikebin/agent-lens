@@ -15,6 +15,8 @@ from app.recorder.trajectory import (
     record_system_prompt,
     record_tool_definition,
     request_transaction,
+    update_request_status,
+    update_request_usage,
 )
 
 router = APIRouter()
@@ -94,6 +96,9 @@ async def openai_chat_completions(request: Request):
         try:
             result = await forward_non_stream("/chat/completions", body)
         except UpstreamError as e:
+            async with request_transaction() as db:
+                await update_request_status(db, request_row_id, "error", "upstream_error",
+                    f"HTTP {e.status_code}: {json.dumps(e.to_json())[:500]}")
             return JSONResponse(status_code=e.status_code, content=e.to_json())
 
         # Record output in a transaction
@@ -108,6 +113,9 @@ async def openai_chat_completions(request: Request):
                     tool_call_id=None,
                     sequence=0,
                 )
+            usage = result.get("usage", {})
+            await update_request_usage(db, request_row_id,
+                usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0))
         return JSONResponse(content=result)
 
 
@@ -153,17 +161,21 @@ async def _stream_openai(request_row_id: int, body: dict):
         }
         yield f"data: {json.dumps(error_event)}\n\n"
         yield "data: [DONE]\n\n"
-        if buffered_events:
-            async with request_transaction() as db:
+        async with request_transaction() as db:
+            if buffered_events:
                 await record_stream_events_batch(db, request_row_id, buffered_events)
+            await update_request_status(db, request_row_id, "error", "upstream_error",
+                f"HTTP {e.status_code}: {json.dumps(e.to_json())[:500]}")
         return
     except Exception:
         error_event = {"error": {"message": "Stream interrupted", "type": "stream_error"}}
         yield f"data: {json.dumps(error_event)}\n\n"
         yield "data: [DONE]\n\n"
-        if buffered_events:
-            async with request_transaction() as db:
+        async with request_transaction() as db:
+            if buffered_events:
                 await record_stream_events_batch(db, request_row_id, buffered_events)
+            await update_request_status(db, request_row_id, "error", "stream_error",
+                "Stream interrupted")
         return
 
     yield "data: [DONE]\n\n"
@@ -182,3 +194,13 @@ async def _stream_openai(request_row_id: int, body: dict):
             tool_call_id=None,
             sequence=0,
         )
+        prompt_tokens = 0
+        completion_tokens = 0
+        for ev_type, ev_data, _ in reversed(buffered_events):
+            if ev_type == "openai_chunk" and isinstance(ev_data, dict):
+                usage = ev_data.get("usage")
+                if usage:
+                    prompt_tokens = usage.get("prompt_tokens", 0)
+                    completion_tokens = usage.get("completion_tokens", 0)
+                    break
+        await update_request_usage(db, request_row_id, prompt_tokens, completion_tokens)

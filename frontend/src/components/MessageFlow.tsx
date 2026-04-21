@@ -4,7 +4,7 @@ import type { Message } from "@/types";
 export function MessageFlow({ messages }: { messages: Message[] }) {
   if (messages.length === 0) {
     return (
-      <div className="text-center py-12 text-[#64748b]">
+      <div className="text-center py-12 text-secondary">
         No messages recorded for this request.
       </div>
     );
@@ -43,7 +43,7 @@ function MessageCard({ message }: { message: Message }) {
 
   return (
     <div
-      className={`rounded-xl border border-[#1e1e2e] bg-[#12121a] p-4 border-l-4 ${
+      className={`rounded-xl border border-surface-raised bg-surface p-4 border-l-4 ${
         roleBg[message.direction] || ""
       }`}
     >
@@ -51,7 +51,7 @@ function MessageCard({ message }: { message: Message }) {
         <div className="flex items-center gap-2">
           <span
             className={`text-xs font-medium px-2 py-0.5 rounded ${
-              roleColors[message.role] || "bg-[#1e1e2e] text-[#64748b]"
+              roleColors[message.role] || "bg-surface-raised text-secondary"
             }`}
           >
             {message.role}
@@ -66,17 +66,17 @@ function MessageCard({ message }: { message: Message }) {
             {message.direction}
           </span>
           {message.tool_call_id && (
-            <span className="text-xs text-[#475569] font-mono">
+            <span className="text-xs text-muted font-mono">
               tool_call: {message.tool_call_id}
             </span>
           )}
-          <span className="text-xs text-[#475569]">#{message.sequence}</span>
+          <span className="text-xs text-muted">#{message.sequence}</span>
         </div>
       </div>
 
       {message.content && (
         <div className="mt-2">
-          <pre className="whitespace-pre-wrap text-sm text-[#cbd5e1] font-mono leading-relaxed">
+          <pre className="whitespace-pre-wrap text-sm text-content font-mono leading-relaxed">
             {expanded ? message.content : contentPreview}
           </pre>
           {message.content && message.content.length > 200 && (
@@ -91,9 +91,9 @@ function MessageCard({ message }: { message: Message }) {
       )}
 
       {toolCalls && (
-        <div className="mt-2 border-t border-[#1e1e2e] pt-2">
-          <p className="text-xs text-[#64748b] mb-1">Tool Calls:</p>
-          <pre className="text-xs text-[#cbd5e1] bg-[#0a0a0f] p-2 rounded-lg overflow-x-auto">
+        <div className="mt-2 border-t border-surface-raised pt-2">
+          <p className="text-xs text-secondary mb-1">Tool Calls:</p>
+          <pre className="text-xs text-content bg-canvas p-2 rounded-lg overflow-x-auto">
             {JSON.stringify(toolCalls, null, 2)}
           </pre>
         </div>
