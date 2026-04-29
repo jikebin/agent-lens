@@ -20,6 +20,7 @@ Browser Dashboard ──→ /api/... ──→ FastAPI ──→ SQLite (查询/
 - **安全存储**：API Key 使用 SHA256 哈希存储，界面仅展示前缀（如 `sk-ab...xyz`）
 - **项目组管理**：按 API Key + Model 自动分组，支持删除整个项目组及其关联数据
 - **Event Stream 分页**：流式事件按需分页加载，避免大量数据一次性拉取
+- **Timeline Mode**：时间线模式，按步骤浏览消息、查看 Diff、状态轴定位、工具侧边栏
 
 ## 项目结构
 

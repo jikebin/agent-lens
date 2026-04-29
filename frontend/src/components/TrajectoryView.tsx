@@ -52,7 +52,7 @@ export function TrajectoryView({
         ))}
       </div>
 
-      {activeTab === "messages" && <MessageFlow messages={messages} />}
+      {activeTab === "messages" && <MessageFlow messages={messages} requestRowId={requestRowId} />}
       {activeTab === "system-prompt" && <SystemPromptView prompts={systemPrompts} />}
       {activeTab === "tools" && <ToolList tools={tools} />}
       {activeTab === "events" && <EventStream requestRowId={requestRowId} />}

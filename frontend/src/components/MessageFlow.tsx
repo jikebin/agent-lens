@@ -1,7 +1,14 @@
 import { useState } from "react";
+import Link from "next/link";
 import type { Message } from "@/types";
 
-export function MessageFlow({ messages }: { messages: Message[] }) {
+export function MessageFlow({
+  messages,
+  requestRowId,
+}: {
+  messages: Message[];
+  requestRowId?: number;
+}) {
   if (messages.length === 0) {
     return (
       <div className="text-center py-12 text-secondary">
@@ -13,13 +20,13 @@ export function MessageFlow({ messages }: { messages: Message[] }) {
   return (
     <div className="space-y-3">
       {messages.map((msg) => (
-        <MessageCard key={msg.id} message={msg} />
+        <MessageCard key={msg.id} message={msg} requestRowId={requestRowId} />
       ))}
     </div>
   );
 }
 
-function MessageCard({ message }: { message: Message }) {
+function MessageCard({ message, requestRowId }: { message: Message; requestRowId?: number }) {
   const [expanded, setExpanded] = useState(false);
 
   const roleColors: Record<string, string> = {
@@ -43,6 +50,7 @@ function MessageCard({ message }: { message: Message }) {
 
   return (
     <div
+      id={`msg-${message.sequence}`}
       className={`rounded-xl border border-surface-raised bg-surface p-4 border-l-4 ${
         roleBg[message.direction] || ""
       }`}
@@ -72,6 +80,17 @@ function MessageCard({ message }: { message: Message }) {
           )}
           <span className="text-xs text-muted">#{message.sequence}</span>
         </div>
+        {requestRowId && (
+          <Link
+            href={`/requests/${requestRowId}?view=timeline#msg-${message.sequence}`}
+            className="text-xs text-secondary hover:text-indigo-400 transition-colors flex items-center gap-1"
+            title="View in Timeline"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        )}
       </div>
 
       {message.content && (

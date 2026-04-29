@@ -13,4 +13,5 @@ openspec/
 .DS_Store
 */.env
 .claude/
-**/*.db
+*.db
+.pids/
