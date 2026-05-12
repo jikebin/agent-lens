@@ -87,6 +87,13 @@ function EventRow({ event }: { event: StreamEvent }) {
     content_block_delta_tool: "bg-cyan-900/40 text-cyan-400",
     content_block_stop: "bg-violet-900/40 text-violet-400",
     content_block_stop_tool: "bg-cyan-900/40 text-cyan-400",
+    "response.created": "bg-cyan-900/40 text-cyan-400",
+    "response.in_progress": "bg-cyan-900/40 text-cyan-400",
+    "response.output_item.added": "bg-sky-900/40 text-sky-400",
+    "response.output_item.done": "bg-sky-900/40 text-sky-400",
+    "response.output_text.delta": "bg-violet-900/40 text-violet-400",
+    "response.output_text.done": "bg-violet-900/40 text-violet-400",
+    "response.completed": "bg-emerald-900/40 text-emerald-400",
   };
 
   return (

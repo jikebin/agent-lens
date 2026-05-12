@@ -12,6 +12,14 @@ _MIGRATIONS = {
         ALTER TABLE requests ADD COLUMN completion_tokens INTEGER NOT NULL DEFAULT 0;
         ALTER TABLE requests ADD COLUMN total_tokens INTEGER NOT NULL DEFAULT 0;
     """,
+    2: """
+        UPDATE projects SET created_at = datetime(created_at, 'localtime') WHERE created_at IS NOT NULL;
+        UPDATE requests SET created_at = datetime(created_at, 'localtime') WHERE created_at IS NOT NULL;
+        UPDATE system_prompts SET created_at = datetime(created_at, 'localtime') WHERE created_at IS NOT NULL;
+        UPDATE tool_definitions SET created_at = datetime(created_at, 'localtime') WHERE created_at IS NOT NULL;
+        UPDATE messages SET created_at = datetime(created_at, 'localtime') WHERE created_at IS NOT NULL;
+        UPDATE stream_events SET created_at = datetime(created_at, 'localtime') WHERE created_at IS NOT NULL;
+    """,
 }
 
 

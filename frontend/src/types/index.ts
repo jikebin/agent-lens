@@ -13,7 +13,7 @@ export interface Project {
 export interface RequestInfo {
   id: number;
   request_id: string;
-  api_format: "openai" | "anthropic";
+  api_format: "openai" | "responses" | "anthropic";
   is_stream: number;
   created_at: string;
   status: "success" | "error";
@@ -27,7 +27,7 @@ export interface RequestInfo {
 export interface RequestDetail {
   id: number;
   request_id: string;
-  api_format: "openai" | "anthropic";
+  api_format: "openai" | "responses" | "anthropic";
   is_stream: number;
   created_at: string;
   project_id: number;

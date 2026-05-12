@@ -19,7 +19,7 @@ class Request:
     id: int | None = None
     project_id: int = 0
     request_id: str = ""
-    api_format: str = ""  # "openai" or "anthropic"
+    api_format: str = ""  # "openai", "responses", or "anthropic"
     is_stream: bool = False
     status: str = "success"
     error_type: str | None = None

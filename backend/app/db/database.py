@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS projects (
     api_key_prefix TEXT NOT NULL,
     model TEXT NOT NULL,
     name TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT (datetime('now','localtime')),
     UNIQUE(api_key_hash, model)
 );
 
@@ -24,14 +24,14 @@ CREATE TABLE IF NOT EXISTS requests (
     request_id TEXT NOT NULL UNIQUE,
     api_format TEXT NOT NULL,
     is_stream INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT (datetime('now','localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS system_prompts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     request_id INTEGER NOT NULL REFERENCES requests(id),
     content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT (datetime('now','localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS tool_definitions (
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS tool_definitions (
     name TEXT NOT NULL,
     description TEXT,
     parameters TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT (datetime('now','localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS messages (
     tool_call_id TEXT,
     direction TEXT NOT NULL,
     sequence INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT (datetime('now','localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS stream_events (
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS stream_events (
     event_type TEXT NOT NULL,
     event_data TEXT,
     sequence INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT (datetime('now','localtime'))
 );
 """
 

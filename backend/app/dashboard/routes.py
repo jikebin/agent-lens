@@ -65,7 +65,7 @@ async def delete_project(project_id: int):
 async def list_project_requests(
     project_id: int,
     status: str | None = Query(None, pattern="^(success|error)$"),
-    api_format: str | None = Query(None, pattern="^(openai|anthropic)$"),
+    api_format: str | None = Query(None, pattern="^(openai|responses|anthropic)$"),
     search: str | None = Query(None),
 ):
     db = await get_db()

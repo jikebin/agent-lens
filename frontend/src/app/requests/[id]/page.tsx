@@ -5,6 +5,12 @@ import { ScrollButtons } from "@/components/ScrollButtons";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { formatDate, formatTokens } from "@/lib/format";
 
+const formatBadgeClass = {
+  openai: "bg-emerald-900/40 text-emerald-400",
+  responses: "bg-cyan-900/40 text-cyan-400",
+  anthropic: "bg-amber-900/40 text-amber-400",
+} as const;
+
 export default async function RequestPage({
   params,
   searchParams,
@@ -90,11 +96,7 @@ export default async function RequestPage({
           <div className="flex items-center gap-3 mt-2">
             <h1 className="text-xl font-bold">Request Detail</h1>
             <span
-              className={`text-xs font-medium px-2 py-0.5 rounded ${
-                detail.api_format === "openai"
-                  ? "bg-emerald-900/40 text-emerald-400"
-                  : "bg-amber-900/40 text-amber-400"
-              }`}
+              className={`text-xs font-medium px-2 py-0.5 rounded ${formatBadgeClass[detail.api_format]}`}
             >
               {detail.api_format}
             </span>

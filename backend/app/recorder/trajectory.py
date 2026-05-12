@@ -3,10 +3,15 @@ from __future__ import annotations
 import json
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import AsyncGenerator
 
 from app.db.database import get_db
 from app.db.models import hash_api_key, mask_api_key
+
+
+def local_timestamp() -> str:
+    return datetime.now().astimezone().replace(tzinfo=None).isoformat(sep=" ", timespec="seconds")
 
 
 @asynccontextmanager
@@ -31,11 +36,11 @@ async def ensure_project(db, api_key: str, model: str) -> int:
 
     cursor = await db.execute(
         """
-        INSERT INTO projects (api_key_hash, api_key_prefix, model) VALUES (?, ?, ?)
+        INSERT INTO projects (api_key_hash, api_key_prefix, model, created_at) VALUES (?, ?, ?, ?)
         ON CONFLICT(api_key_hash, model) DO UPDATE SET api_key_prefix = api_key_prefix
         RETURNING id
         """,
-        (api_key_hash, api_key_prefix, model),
+        (api_key_hash, api_key_prefix, model, local_timestamp()),
     )
     row = await cursor.fetchone()
     return row[0]
@@ -48,16 +53,16 @@ async def create_request(
     request_id = str(uuid.uuid4())
 
     cursor = await db.execute(
-        "INSERT INTO requests (project_id, request_id, api_format, is_stream) VALUES (?, ?, ?, ?)",
-        (project_id, request_id, api_format, int(is_stream)),
+        "INSERT INTO requests (project_id, request_id, api_format, is_stream, created_at) VALUES (?, ?, ?, ?, ?)",
+        (project_id, request_id, api_format, int(is_stream), local_timestamp()),
     )
     return cursor.lastrowid, request_id
 
 
 async def record_system_prompt(db, request_row_id: int, content: str) -> None:
     await db.execute(
-        "INSERT INTO system_prompts (request_id, content) VALUES (?, ?)",
-        (request_row_id, content),
+        "INSERT INTO system_prompts (request_id, content, created_at) VALUES (?, ?, ?)",
+        (request_row_id, content, local_timestamp()),
     )
 
 
@@ -65,12 +70,13 @@ async def record_tool_definition(
     db, request_row_id: int, name: str, description: str | None, parameters: dict | None
 ) -> None:
     await db.execute(
-        "INSERT INTO tool_definitions (request_id, name, description, parameters) VALUES (?, ?, ?, ?)",
+        "INSERT INTO tool_definitions (request_id, name, description, parameters, created_at) VALUES (?, ?, ?, ?, ?)",
         (
             request_row_id,
             name,
             description,
             json.dumps(parameters) if parameters else None,
+            local_timestamp(),
         ),
     )
 
@@ -85,7 +91,7 @@ async def record_input_messages(
         tool_call_id = msg.get("tool_call_id")
 
         await db.execute(
-            "INSERT INTO messages (request_id, role, content, tool_calls, tool_call_id, direction, sequence) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO messages (request_id, role, content, tool_calls, tool_call_id, direction, sequence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 request_row_id,
                 role,
@@ -94,6 +100,7 @@ async def record_input_messages(
                 tool_call_id,
                 "input",
                 seq,
+                local_timestamp(),
             ),
         )
 
@@ -102,7 +109,7 @@ async def record_output_message(
     db, request_row_id: int, role: str, content: str | None, tool_calls: list | None, tool_call_id: str | None, sequence: int
 ) -> None:
     await db.execute(
-        "INSERT INTO messages (request_id, role, content, tool_calls, tool_call_id, direction, sequence) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO messages (request_id, role, content, tool_calls, tool_call_id, direction, sequence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (
             request_row_id,
             role,
@@ -111,6 +118,7 @@ async def record_output_message(
             tool_call_id,
             "output",
             sequence,
+            local_timestamp(),
         ),
     )
 
@@ -120,9 +128,9 @@ async def record_stream_events_batch(
 ) -> None:
     """Batch insert stream events after streaming completes to avoid DB contention."""
     await db.executemany(
-        "INSERT INTO stream_events (request_id, event_type, event_data, sequence) VALUES (?, ?, ?, ?)",
+        "INSERT INTO stream_events (request_id, event_type, event_data, sequence, created_at) VALUES (?, ?, ?, ?, ?)",
         [
-            (request_row_id, event_type, json.dumps(data) if data else None, seq)
+            (request_row_id, event_type, json.dumps(data) if data else None, seq, local_timestamp())
             for event_type, data, seq in events
         ],
     )

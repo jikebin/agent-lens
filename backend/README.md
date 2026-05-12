@@ -1,6 +1,6 @@
 # Agent Lens — Backend
 
-FastAPI 代理中间件 + 仪表板 API 服务。拦截 OpenAI / Anthropic API 调用，记录轨迹数据到 SQLite，并提供 RESTful 查询接口。
+FastAPI 代理中间件 + 仪表板 API 服务。拦截 OpenAI Chat Completions / OpenAI Responses / Anthropic API 调用，记录轨迹数据到 SQLite，并提供 RESTful 查询接口。
 
 ## 目录结构
 
@@ -13,6 +13,7 @@ backend/
 │   ├── proxy/            # API 代理转发层
 │   │   ├── forwarder.py            # httpx 上游转发（流式/非流式）
 │   │   ├── openai_adapter.py       # OpenAI 格式适配 + 轨迹记录
+│   │   ├── responses_adapter.py    # OpenAI Responses 格式适配 + 轨迹记录
 │   │   └── anthropic_adapter.py    # Anthropic 格式适配 + 轨迹记录
 │   ├── recorder/         # 轨迹记录层
 │   │   └── trajectory.py           # 事务化轨迹写入
@@ -77,6 +78,7 @@ projects          ← 按 (api_key_hash, model) 唯一索引的项目组
 | 端点 | 方法 | 说明 |
 |------|------|------|
 | `/v1/chat/completions` | POST | OpenAI 格式代理 |
+| `/v1/responses` | POST | OpenAI Responses 格式代理 |
 | `/anthropic/v1/messages` | POST | Anthropic 格式代理 |
 
 ### 仪表板端点

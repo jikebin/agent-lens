@@ -6,15 +6,18 @@ AI Agent 轨迹分析与可视化套件。作为代理中间件拦截 AI API 调
 
 ```
 Client (OpenAI SDK)  ──→ /v1/chat/completions    ──→ ┐
-                                                       ├──→ Proxy ──→ OpenAI-Compatible API
-Client (Claude SDK)   ──→ /anthropic/v1/messages  ──→ ┘       │
-                                                                 ↓
-                                                           SQLite (轨迹存储)
-                                                                 │
+Client (OpenAI SDK)  ──→ /v1/responses           ──→ ┤
+Client (Claude SDK)   ──→ /anthropic/v1/messages  ──→ ┘
+                                                       │
+                                                       ↓
+                                             Proxy ──→ OpenAI-Compatible API
+                                                       ↓
+                                                 SQLite (轨迹存储)
+                                                       │
 Browser Dashboard ──→ /api/... ──→ FastAPI ──→ SQLite (查询/可视化)
 ```
 
-- **双 API 兼容**：通过不同 URL 路径同时兼容 OpenAI 和 Anthropic API 格式
+- **多 API 兼容**：通过不同 URL 路径同时兼容 OpenAI Chat Completions、OpenAI Responses 和 Anthropic API 格式
 - **流式 + 非流式**：根据请求的 `stream` 参数自动切换，支持 SSE 事件流和普通 JSON 响应
 - **轨迹记录**：系统提示词、工具定义与参数、输入输出消息、流式事件全量记录
 - **安全存储**：API Key 使用 SHA256 哈希存储，界面仅展示前缀（如 `sk-ab...xyz`）
@@ -33,6 +36,7 @@ agent-lens/
 │       ├── proxy/        # API 代理转发层
 │       │   ├── forwarder.py        # httpx 上游转发（流式/非流式）
 │       │   ├── openai_adapter.py   # OpenAI 格式适配
+│       │   ├── responses_adapter.py# OpenAI Responses 格式适配
 │       │   └── anthropic_adapter.py# Anthropic 格式适配
 │       ├── recorder/     # 轨迹记录层
 │       │   └── trajectory.py       # 事务化轨迹写入
@@ -63,7 +67,7 @@ agent-lens/
 ```bash
 cd backend
 cp .env.example .env   # 编辑 .env 填入实际配置
-PYTHONPATH=. uv run uvicorn app.main:app --reload --port 7000
+PYTHONPATH=. uv run uvicorn app.main:app --reload --port 8000
 ```
 
 环境变量说明：
@@ -137,6 +141,26 @@ response = client.messages.create(
 )
 ```
 
+### OpenAI Responses API 兼容端点
+
+同样将 OpenAI SDK 的 `base_url` 指向代理，并使用 Responses API：
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8000/v1",
+    api_key="your-api-key"
+)
+
+response = client.responses.create(
+    model="gpt-4.1",
+    instructions="You are a helpful assistant.",
+    input="Hello",
+    stream=False
+)
+```
+
 ### cURL 示例
 
 ```bash
@@ -151,6 +175,12 @@ curl http://localhost:8000/anthropic/v1/messages \
   -H "x-api-key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"model":"claude-sonnet-4-20250514","max_tokens":1024,"messages":[{"role":"user","content":"Hello"}]}'
+
+# OpenAI Responses 格式 - 非流式
+curl http://localhost:8000/v1/responses \
+  -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4.1","instructions":"You are a helpful assistant.","input":"Hello"}'
 ```
 
 ## 仪表板 API

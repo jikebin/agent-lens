@@ -5,8 +5,23 @@ import Link from "next/link";
 import type { RequestInfo } from "@/types";
 import { formatDate, formatTokens } from "@/lib/format";
 
+type ApiFormatFilter = "all" | RequestInfo["api_format"];
+
+const formatLabels: Record<ApiFormatFilter, string> = {
+  all: "All",
+  openai: "OpenAI",
+  responses: "Responses",
+  anthropic: "Anthropic",
+};
+
+const formatBadgeClass: Record<RequestInfo["api_format"], string> = {
+  openai: "bg-emerald-900/40 text-emerald-400",
+  responses: "bg-cyan-900/40 text-cyan-400",
+  anthropic: "bg-amber-900/40 text-amber-400",
+};
+
 export function RequestList({ requests }: { requests: RequestInfo[] }) {
-  const [formatFilter, setFormatFilter] = useState<"all" | "openai" | "anthropic">("all");
+  const [formatFilter, setFormatFilter] = useState<ApiFormatFilter>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "success" | "error">("all");
   const [search, setSearch] = useState("");
 
@@ -33,7 +48,7 @@ export function RequestList({ requests }: { requests: RequestInfo[] }) {
       <div className="flex flex-wrap items-center gap-3">
         {/* Format toggle */}
         <div className="flex rounded-lg border border-surface-raised overflow-hidden">
-          {(["all", "openai", "anthropic"] as const).map((f) => (
+          {(["all", "openai", "responses", "anthropic"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFormatFilter(f)}
@@ -43,7 +58,7 @@ export function RequestList({ requests }: { requests: RequestInfo[] }) {
                   : "bg-surface text-secondary hover:text-secondary-bright"
               }`}
             >
-              {f === "all" ? "All" : f === "openai" ? "OpenAI" : "Anthropic"}
+              {formatLabels[f]}
             </button>
           ))}
         </div>
@@ -92,11 +107,7 @@ export function RequestList({ requests }: { requests: RequestInfo[] }) {
                 <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
               )}
               <span
-                className={`text-xs font-medium px-2 py-0.5 rounded ${
-                  req.api_format === "openai"
-                    ? "bg-emerald-900/40 text-emerald-400"
-                    : "bg-amber-900/40 text-amber-400"
-                }`}
+                className={`text-xs font-medium px-2 py-0.5 rounded ${formatBadgeClass[req.api_format]}`}
               >
                 {req.api_format}
               </span>

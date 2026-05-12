@@ -7,6 +7,7 @@ from app.db.database import close_db, get_db
 from app.db.migrations import run_migrations
 from app.proxy.forwarder import close_http_client, init_http_client
 from app.proxy.openai_adapter import router as openai_router
+from app.proxy.responses_adapter import router as responses_router
 from app.proxy.anthropic_adapter import router as anthropic_router
 from app.dashboard.routes import router as dashboard_router
 
@@ -35,6 +36,7 @@ app.add_middleware(
 
 # Proxy routes
 app.include_router(openai_router)
+app.include_router(responses_router)
 app.include_router(anthropic_router)
 
 # Dashboard API routes
