@@ -330,6 +330,11 @@ async def _stream_anthropic(request_row_id: int, openai_body: dict, model: str):
 
     seq = 2
     full_content_parts: list[str] = []
+    # tool_calls_map tracks tool call state across stream chunks.
+    # Each entry: {"id": str, "name": str, "input": str, "started": bool,
+    #              "pending_args": list[str]}
+    # "started" is True once content_block_start has been emitted (requires name != "").
+    # "pending_args" buffers argument fragments received before the start event.
     tool_calls_map: dict[int, dict] = {}
 
     try:
@@ -357,32 +362,73 @@ async def _stream_anthropic(request_row_id: int, openai_body: dict, model: str):
                 if delta.get("tool_calls"):
                     for tc in delta["tool_calls"]:
                         idx = tc.get("index", 0)
+                        func = tc.get("function", {})
+
                         if idx not in tool_calls_map:
                             tool_calls_map[idx] = {
                                 "id": tc.get("id", ""),
-                                "name": "",
+                                "name": func.get("name", ""),
                                 "input": "",
+                                "started": False,
+                                "pending_args": [],
                             }
+                        else:
+                            if tc.get("id"):
+                                tool_calls_map[idx]["id"] = tc["id"]
+                            if func.get("name"):
+                                tool_calls_map[idx]["name"] = func["name"]
+
+                        if func.get("arguments"):
+                            tool_calls_map[idx]["input"] += func["arguments"]
+
+                        tc_state = tool_calls_map[idx]
+
+                        # --- Emit content_block_start once name is available ---
+                        if not tc_state["started"]:
+                            if not tc_state["name"]:
+                                # Name not yet received — buffer arguments for later
+                                if func.get("arguments"):
+                                    tc_state["pending_args"].append(func["arguments"])
+                                continue
+
+                            # Name is available now; emit start event
+                            tc_state["started"] = True
                             tool_start = {
                                 "type": "content_block_start",
                                 "index": idx + 1,
                                 "content_block": {
                                     "type": "tool_use",
-                                    "id": tc.get("id", ""),
-                                    "name": "",
+                                    "id": tc_state["id"],
+                                    "name": tc_state["name"],
                                 },
                             }
                             yield f"event: content_block_start\ndata: {json.dumps(tool_start)}\n\n"
                             buffered_events.append(("content_block_start_tool", tool_start, seq))
                             seq += 1
 
-                        if tc.get("id"):
-                            tool_calls_map[idx]["id"] = tc["id"]
-                        func = tc.get("function", {})
-                        if func.get("name"):
-                            tool_calls_map[idx]["name"] = func["name"]
-                        if func.get("arguments"):
-                            tool_calls_map[idx]["input"] += func["arguments"]
+                            # Flush any argument fragments that were buffered
+                            # plus the current chunk's arguments (name and args
+                            # can arrive in the same OpenAI delta).
+                            args_to_flush = tc_state["pending_args"]
+                            tc_state["pending_args"] = []
+                            if func.get("arguments"):
+                                args_to_flush.append(func["arguments"])
+
+                            for args_fragment in args_to_flush:
+                                args_delta = {
+                                    "type": "content_block_delta",
+                                    "index": idx + 1,
+                                    "delta": {
+                                        "type": "input_json_delta",
+                                        "partial_json": args_fragment,
+                                    },
+                                }
+                                yield f"event: content_block_delta\ndata: {json.dumps(args_delta)}\n\n"
+                                buffered_events.append(("content_block_delta_tool", args_delta, seq))
+                                seq += 1
+
+                        elif func.get("arguments"):
+                            # Already started, emit argument delta directly
                             args_delta = {
                                 "type": "content_block_delta",
                                 "index": idx + 1,
@@ -424,7 +470,37 @@ async def _stream_anthropic(request_row_id: int, openai_body: dict, model: str):
     buffered_events.append(("content_block_stop", text_block_stop, seq))
     seq += 1
 
-    for idx in tool_calls_map:
+    for idx, tc_state in tool_calls_map.items():
+        # Force-flush any tool that never received a name (shouldn't happen
+        # with a well-behaved upstream, but handle gracefully).
+        if not tc_state["started"]:
+            tc_state["started"] = True
+            tool_start = {
+                "type": "content_block_start",
+                "index": idx + 1,
+                "content_block": {
+                    "type": "tool_use",
+                    "id": tc_state["id"],
+                    "name": tc_state["name"] or "unknown",
+                },
+            }
+            yield f"event: content_block_start\ndata: {json.dumps(tool_start)}\n\n"
+            buffered_events.append(("content_block_start_tool", tool_start, seq))
+            seq += 1
+            for args_fragment in tc_state["pending_args"]:
+                args_delta = {
+                    "type": "content_block_delta",
+                    "index": idx + 1,
+                    "delta": {
+                        "type": "input_json_delta",
+                        "partial_json": args_fragment,
+                    },
+                }
+                yield f"event: content_block_delta\ndata: {json.dumps(args_delta)}\n\n"
+                buffered_events.append(("content_block_delta_tool", args_delta, seq))
+                seq += 1
+            tc_state["pending_args"] = []
+
         tool_block_stop = {"type": "content_block_stop", "index": idx + 1}
         yield f"event: content_block_stop\ndata: {json.dumps(tool_block_stop)}\n\n"
         buffered_events.append(("content_block_stop_tool", tool_block_stop, seq))
